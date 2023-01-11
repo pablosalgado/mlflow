@@ -4,9 +4,10 @@ import com.google.common.collect.Lists;
 import org.apache.http.client.utils.URIBuilder;
 import org.mlflow.artifacts.ArtifactRepository;
 import org.mlflow.artifacts.ArtifactRepositoryFactory;
-import org.mlflow.artifacts.CliBasedArtifactRepository;
 import org.mlflow.api.proto.ModelRegistry.*;
 import org.mlflow.api.proto.Service.*;
+import org.mlflow.artifacts.CliBasedArtifactRepository;
+import org.mlflow.artifacts.NativeArtifactRepository;
 import org.mlflow.tracking.creds.*;
 
 import java.io.Closeable;
@@ -32,24 +33,69 @@ public class MlflowClient implements Serializable, Closeable {
   private final MlflowHttpCaller httpCaller;
   private final MlflowHostCredsProvider hostCredsProvider;
 
-  /** Return a default client based on the MLFLOW_TRACKING_URI environment variable. */
+  /**
+   * Instantiate a new {@link MlflowClient} based on the MLFLOW_TRACKING_URI environment variable using the new
+   * {@link NativeArtifactRepository} implementation. Should users need the old legacy
+   * implementation please use the {@link #MlflowClient(boolean)} constructor.
+   */
   public MlflowClient() {
     this(getDefaultTrackingUri());
   }
 
-  /** Instantiate a new client using the provided tracking uri. */
+  /**
+   * Instantiate a new {@link MlflowClient} based on the provided tracking uri using the new
+   * {@link NativeArtifactRepository} implementation. Should users need the old legacy
+   * {@link CliBasedArtifactRepository} implementation please use the {@link #MlflowClient(String, boolean)} constructor.
+   *
+   * @param trackingUri The trackin uri to use.
+   */
   public MlflowClient(String trackingUri) {
     this(getHostCredsProviderFromTrackingUri(trackingUri));
   }
 
   /**
-   * Create a new MlflowClient; users should prefer constructing ApiClients via
-   * {@link #MlflowClient()} or {@link #MlflowClient(String)} if possible.
+   * Instantiate a new {@link MlflowClient} using the new {@link NativeArtifactRepository}. Users should prefer
+   * constructing ApiClients via {@link #MlflowClient()} or {@link #MlflowClient(String)} if possible.
    */
   public MlflowClient(MlflowHostCredsProvider hostCredsProvider) {
     this.hostCredsProvider = hostCredsProvider;
     this.httpCaller = new MlflowHttpCaller(hostCredsProvider);
-    this.artifactRepositoryFactory = new ArtifactRepositoryFactory(hostCredsProvider);
+    this.artifactRepositoryFactory = new ArtifactRepositoryFactory(hostCredsProvider, true);
+  }
+
+  /**
+   * Instantiate a new {@link MlflowClient} based on the MLFLOW_TRACKING_URI environment variable and allows to indicate
+   * whether to use the new Java native {@link NativeArtifactRepository } implementation.
+   *
+   * @param nativeArtifactRepository <code>true</code> to use the new Java native artifact-repository implementation.
+   */
+  public MlflowClient(boolean nativeArtifactRepository) {
+    this(getDefaultTrackingUri(), nativeArtifactRepository);
+  }
+
+  /**
+   * Instantiate a new {@link MlflowClient} using the provided tracking uri and allows to indicate whether to use the new
+   * Java native {@link NativeArtifactRepository } implementation.
+   *
+   * @param trackingUri              The tracking uri.
+   * @param nativeArtifactRepository <code>true</code> to use the new Java native {@link NativeArtifactRepository}
+   *                                 implementation.
+   */
+  public MlflowClient(String trackingUri, boolean nativeArtifactRepository) {
+    this(getHostCredsProviderFromTrackingUri(trackingUri), nativeArtifactRepository);
+  }
+
+  /**
+   * Instantiate a new {@link MlflowClient}. Users should prefer constructing ApiClients via
+   * {@link #MlflowClient(boolean)} or {@link #MlflowClient(String, boolean)} if possible.
+   *
+   * @param hostCredsProvider
+   * @param nativeArtifactRepository
+   */
+  public MlflowClient(MlflowHostCredsProvider hostCredsProvider, boolean nativeArtifactRepository) {
+    this.hostCredsProvider = hostCredsProvider;
+    this.httpCaller = new MlflowHttpCaller(hostCredsProvider);
+    this.artifactRepositoryFactory = new ArtifactRepositoryFactory(hostCredsProvider, nativeArtifactRepository);
   }
 
   /**
@@ -759,6 +805,10 @@ public class MlflowClient implements Serializable, Closeable {
    */
   public File downloadArtifacts(String runId, String artifactPath) {
     return getArtifactRepository(runId).downloadArtifacts(artifactPath);
+  }
+
+  private ArtifactRepository getArtifactRepository() {
+    return artifactRepositoryFactory.getArtifactRepository();
   }
 
   /**

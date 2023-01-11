@@ -31,7 +31,7 @@ import org.mlflow.tracking.creds.MlflowHostCreds;
 import org.mlflow.tracking.creds.MlflowHostCredsProvider;
 
 
-class MlflowHttpCaller {
+public class MlflowHttpCaller {
   private static final Logger logger = LoggerFactory.getLogger(MlflowHttpCaller.class);
   private static final String BASE_API_PATH = "api/2.0/mlflow";
   protected CloseableHttpClient httpClient;
@@ -43,7 +43,7 @@ class MlflowHttpCaller {
   /**
    * Construct a new MlflowHttpCaller with a default configuration for request retries.
    */
-  MlflowHttpCaller(MlflowHostCredsProvider hostCredsProvider) {
+  public MlflowHttpCaller(MlflowHostCredsProvider hostCredsProvider) {
     this(hostCredsProvider, 60000, 1000, 3);
   }
 
@@ -105,7 +105,7 @@ class MlflowHttpCaller {
     return response;
   }
 
-  private HttpResponse executeRequest(HttpRequestBase request) throws IOException {
+  protected HttpResponse executeRequest(HttpRequestBase request) throws IOException {
     HttpResponse response = null;
     int attemptsRemaining = this.maxRetryAttempts;
     while (attemptsRemaining > 0) {
@@ -227,7 +227,7 @@ class MlflowHttpCaller {
     return statusCode < 200 || statusCode > 399;
   }
 
-  private void createHttpClientIfNecessary(boolean noTlsVerify) {
+  protected void createHttpClientIfNecessary(boolean noTlsVerify) {
     if (httpClient != null) {
       return;
     }

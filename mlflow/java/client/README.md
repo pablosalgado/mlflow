@@ -8,7 +8,7 @@ and [REST API](https://mlflow.org/docs/latest/rest-api.html).
 
 - Java 1.8
 - Maven
-- Run the [MLflow Tracking Server 0.4.2](https://mlflow.org/docs/latest/tracking.html#running-a-tracking-server)
+- Run the [MLflow Tracking Server 2.1.1](https://mlflow.org/docs/latest/tracking.html#running-a-tracking-server)
 
 ## Build
 
@@ -25,16 +25,15 @@ mvn package
 
 ## Run
 
-To run a simple sample.
+To run a simple sample please start the MLflow Tracking server, e.g. `mlflow server` and then execute:
 
 ```
-java -cp target/mlflow-java-client-0.4.2.jar \
-  com.databricks.mlflow.client.samples.QuickStartDriver http://localhost:5001
+mvn compile exec:java -Dexec.mainClass="org.mlflow.tracking.samples.QuickStartDriver" -Dexec.args="http://127.0.0.1:5000"
 ```
 
 ## JSON Serialization
 
-MLflow Java client uses [Protobuf](https://developers.google.com/protocol-buffers/) 3.6.0 to serialize the JSON payload.
+MLflow Java client uses [Protobuf](https://developers.google.com/protocol-buffers/) 3.19.4 to serialize the JSON payload.
 
 - [service.proto](../mlflow/protos/service.proto) - Protobuf definition of data objects.
 - [com.databricks.api.proto.mlflow.Service.java](src/main/java/com/databricks/api/proto/mlflow/Service.java) - Generated Java classes of all data objects.

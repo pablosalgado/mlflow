@@ -32,7 +32,9 @@ import org.mlflow.tracking.creds.MlflowHostCredsProvider;
  * within Java.
  *
  * We require that 'mlflow' is available in the system path.
+ * @deprecated Replaced by {@link NativeArtifactRepository}
  */
+@Deprecated
 public class CliBasedArtifactRepository implements ArtifactRepository {
   private static final Logger logger = LoggerFactory.getLogger(CliBasedArtifactRepository.class);
 
