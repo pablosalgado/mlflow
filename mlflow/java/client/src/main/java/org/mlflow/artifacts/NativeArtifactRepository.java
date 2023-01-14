@@ -298,11 +298,12 @@ public class NativeArtifactRepository implements ArtifactRepository {
     // deserialize a list-of-dictionaries, and then reserialize each dictionary to pass it to
     // the protobuf deserializer.
     Gson gson = new Gson();
-    Type type = new TypeToken<List<Map<String, Object>>>() {
+    Type type = new TypeToken<Map<String, List<Map<String, Object>>>>() {
     }.getType();
-    List<Map<String, Object>> listOfDicts = gson.fromJson(json, type);
+    Map<String, List<Map<String, Object>>> listOfDicts = gson.fromJson(json, type);
     List<Service.FileInfo> fileInfos = new ArrayList<>();
-    for (Map<String, Object> dict : listOfDicts) {
+
+    for (Map<String, Object> dict : listOfDicts.get("files")) {
       String fileInfoJson = gson.toJson(dict);
       try {
         Service.FileInfo.Builder builder = Service.FileInfo.newBuilder();
@@ -312,6 +313,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
         throw new MlflowClientException("Failed to deserialize JSON into FileInfo: " + json, e);
       }
     }
+
     return fileInfos;
   }
 }
