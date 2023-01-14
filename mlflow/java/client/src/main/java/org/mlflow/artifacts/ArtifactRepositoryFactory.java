@@ -15,7 +15,7 @@ public class ArtifactRepositoryFactory {
 
   public ArtifactRepository getArtifactRepository() {
     if(this.nativeArtifactRepository) {
-      return new NativeArtifactRepository(null, null, hostCredsProvider);
+      return new NativeArtifactRepository(null, hostCredsProvider);
     } else {
       return new CliBasedArtifactRepository(null, null,hostCredsProvider);
     }
@@ -23,7 +23,7 @@ public class ArtifactRepositoryFactory {
 
   public ArtifactRepository getArtifactRepository(URI baseArtifactUri, String runId) {
     if(this.nativeArtifactRepository) {
-      return new NativeArtifactRepository(baseArtifactUri.toString(), runId, hostCredsProvider);
+      return new NativeArtifactRepository(baseArtifactUri.toString(), hostCredsProvider);
     } else {
       return new CliBasedArtifactRepository(baseArtifactUri.toString(), runId, hostCredsProvider);
     }

@@ -64,7 +64,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
       }
     }
 
-    public String put(String uri, FileEntity fileEntity) {
+    public void put(String uri, FileEntity fileEntity) {
       logger.debug("Sending PUT " + uri);
       HttpPut request = new HttpPut();
       fillRequestSettings(request, uri);
@@ -73,7 +73,6 @@ public class NativeArtifactRepository implements ArtifactRepository {
         HttpResponse response = executeRequest(request);
         String responseJson = EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
         logger.debug("Response: " + responseJson);
-        return responseJson;
       } catch (IOException e) {
         throw new MlflowClientException(e);
       }
@@ -122,9 +121,6 @@ public class NativeArtifactRepository implements ArtifactRepository {
   // Base directory of the artifactory, used to let the user know why this repository was chosen.
   private final String artifactBaseDir;
 
-  // Run ID this repository is targeting.
-  private final String runId;
-
   // Used to pass credentials as environment variables
   // (e.g., MLFLOW_TRACKING_URI or DATABRICKS_HOST) to the mlflow process.
   private final MlflowHostCredsProvider hostCredsProvider;
@@ -135,10 +131,8 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
   public NativeArtifactRepository(
     String artifactBaseDir,
-    String runId,
     MlflowHostCredsProvider hostCredsProvider) {
     this.artifactBaseDir = artifactBaseDir;
-    this.runId = runId;
     this.hostCredsProvider = hostCredsProvider;
     this.httpCaller = new HttpCaller();
   }
@@ -154,7 +148,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
         " instead: " + localFile);
     }
 
-    verifyArtifactPaht(artifactPath);
+    verifyArtifactPath(artifactPath);
 
     Path p = Paths.get("/", StringUtils.defaultIfEmpty(artifactPath, ""), localFile.getName());
 
@@ -180,12 +174,20 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
   @Override
   public void logArtifacts(File localDir, String artifactPath) {
-    try (Stream<Path> walk = Files.walk(Paths.get(localDir.getAbsolutePath()))) {
-      walk.forEach(c -> {
-        System.out.println(c);
+    Path root = Paths.get(localDir.getAbsolutePath());
+
+    try (Stream<Path> paths = Files.walk(root)) {
+      paths.filter(Files::isRegularFile).forEach(path -> {
+        Path parent = path.getParent();
+        Path relPath = root.relativize(parent);
+
+        logArtifact(
+          path.toFile(),
+          artifactPath == null ? relPath.toString() : Paths.get("", artifactPath, relPath.toString()).toString()
+        );
       });
     } catch (IOException e) {
-      throw new RuntimeException(e);
+      throw new MlflowClientException(e);
     }
   }
 
@@ -272,7 +274,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
     }
   }
 
-  private void verifyArtifactPaht(String artifactPath) {
+  private void verifyArtifactPath(String artifactPath) {
     if (artifactPath == null) return;
 
     String normalized = Paths.get("", artifactPath).normalize().toString();
@@ -282,7 +284,9 @@ public class NativeArtifactRepository implements ArtifactRepository {
       || normalized.startsWith("..")
       || normalized.startsWith("/")
     ) {
-      throw new MlflowClientException("Invalid artifact path.");
+      throw new MlflowClientException(
+        String.format("Invalid artifact path: %s.", artifactPath)
+      );
     }
   }
 
