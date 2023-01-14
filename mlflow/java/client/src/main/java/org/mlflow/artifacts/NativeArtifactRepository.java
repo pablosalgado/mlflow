@@ -156,7 +156,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
     verifyArtifactPaht(artifactPath);
 
-    Path p = Paths.get("/", artifactPath, localFile.getName());
+    Path p = Paths.get("/", StringUtils.defaultIfEmpty(artifactPath, ""), localFile.getName());
 
     URIBuilder artifactUriBuilder = newURIBuilder(this.artifactBaseDir);
 
