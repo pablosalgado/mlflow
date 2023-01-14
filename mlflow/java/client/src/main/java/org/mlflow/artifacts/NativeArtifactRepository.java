@@ -1,6 +1,10 @@
 package org.mlflow.artifacts;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.http.HttpResponse;
@@ -22,14 +26,18 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Type;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 
 /**
  * Java Native implementation to artifact repositories. Supersedes {@link CliBasedArtifactRepository}
@@ -37,6 +45,7 @@ import java.util.Map;
 public class NativeArtifactRepository implements ArtifactRepository {
   private class HttpCaller extends MlflowHttpCaller {
     private final Logger logger = LoggerFactory.getLogger(MlflowHttpCaller.class);
+
     HttpCaller() {
       super(NativeArtifactRepository.this.hostCredsProvider);
     }
@@ -125,9 +134,9 @@ public class NativeArtifactRepository implements ArtifactRepository {
   private final String base_url = "/api/2.0/mlflow-artifacts/artifacts";
 
   public NativeArtifactRepository(
-      String artifactBaseDir,
-      String runId,
-      MlflowHostCredsProvider hostCredsProvider) {
+    String artifactBaseDir,
+    String runId,
+    MlflowHostCredsProvider hostCredsProvider) {
     this.artifactBaseDir = artifactBaseDir;
     this.runId = runId;
     this.hostCredsProvider = hostCredsProvider;
@@ -142,17 +151,21 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
     if (localFile.isDirectory()) {
       throw new MlflowClientException("Local path points to a directory. Use logArtifacts" +
-          " instead: " + localFile);
+        " instead: " + localFile);
     }
+
+    verifyArtifactPaht(artifactPath);
+
+    Path p = Paths.get("/", artifactPath, localFile.getName());
 
     URIBuilder artifactUriBuilder = newURIBuilder(this.artifactBaseDir);
 
-    URIBuilder trackUriBuilder = newURIBuilder(hostCredsProvider.getHostCreds().getHost());
-    trackUriBuilder.setPath(base_url + artifactUriBuilder.getPath() + "/" + localFile.getName());
+    URIBuilder trackUriBuilder = newURIBuilder(this.hostCredsProvider.getHostCreds().getHost());
+    trackUriBuilder.setPath(this.base_url + artifactUriBuilder.getPath() + p);
 
     FileEntity fileEntity = new FileEntity(localFile);
 
-    httpCaller.put(trackUriBuilder.toString(), fileEntity);
+    this.httpCaller.put(trackUriBuilder.toString(), fileEntity);
   }
 
   @Override
@@ -162,12 +175,18 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
   @Override
   public void logArtifacts(File localDir) {
-
+    logArtifacts(localDir, null);
   }
 
   @Override
   public void logArtifacts(File localDir, String artifactPath) {
-
+    try (Stream<Path> walk = Files.walk(Paths.get(localDir.getAbsolutePath()))) {
+      walk.forEach(c -> {
+        System.out.println(c);
+      });
+    } catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   @Override
@@ -184,9 +203,9 @@ public class NativeArtifactRepository implements ArtifactRepository {
     trackUriBuilder.setPath(base_url);
     trackUriBuilder.setParameter("path", path);
 
-    httpCaller.get(trackUriBuilder.toString());
+    String jsonOutput = httpCaller.get(trackUriBuilder.toString());
 
-    return null;
+    return parseFileInfos(jsonOutput);
   }
 
   @Override
@@ -228,8 +247,8 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
   @VisibleForTesting
   void setProcessEnvironmentDatabricks(
-      Map<String, String> environment,
-      DatabricksMlflowHostCreds hostCreds) {
+    Map<String, String> environment,
+    DatabricksMlflowHostCreds hostCreds) {
     environment.put("DATABRICKS_HOST", hostCreds.getHost());
     if (hostCreds.getUsername() != null) {
       environment.put("DATABRICKS_USERNAME", hostCreds.getUsername());
@@ -253,4 +272,42 @@ public class NativeArtifactRepository implements ArtifactRepository {
     }
   }
 
+  private void verifyArtifactPaht(String artifactPath) {
+    if (artifactPath == null) return;
+
+    String normalized = Paths.get("", artifactPath).normalize().toString();
+    if (!normalized.equals(artifactPath)
+      || normalized.equals(".")
+      || normalized.startsWith(".")
+      || normalized.startsWith("..")
+      || normalized.startsWith("/")
+    ) {
+      throw new MlflowClientException("Invalid artifact path.");
+    }
+  }
+
+  /**
+   * Parses a list of JSON FileInfos, as returned by 'mlflow artifacts list'.
+   */
+  private List<Service.FileInfo> parseFileInfos(String json) {
+    // The protobuf deserializer doesn't allow us to directly deserialize a list, so we
+    // deserialize a list-of-dictionaries, and then reserialize each dictionary to pass it to
+    // the protobuf deserializer.
+    Gson gson = new Gson();
+    Type type = new TypeToken<List<Map<String, Object>>>() {
+    }.getType();
+    List<Map<String, Object>> listOfDicts = gson.fromJson(json, type);
+    List<Service.FileInfo> fileInfos = new ArrayList<>();
+    for (Map<String, Object> dict : listOfDicts) {
+      String fileInfoJson = gson.toJson(dict);
+      try {
+        Service.FileInfo.Builder builder = Service.FileInfo.newBuilder();
+        JsonFormat.parser().merge(fileInfoJson, builder);
+        fileInfos.add(builder.build());
+      } catch (InvalidProtocolBufferException e) {
+        throw new MlflowClientException("Failed to deserialize JSON into FileInfo: " + json, e);
+      }
+    }
+    return fileInfos;
+  }
 }
