@@ -199,11 +199,11 @@ public class NativeArtifactRepository implements ArtifactRepository {
   @Override
   public List<Service.FileInfo> listArtifacts(String artifactPath) {
     URIBuilder artifactUriBuilder = newURIBuilder(this.artifactBaseDir);
-    String path = StringUtils.removeStart(artifactUriBuilder.getPath(), "/");
+    Path path = Paths.get("", artifactUriBuilder.getPath(), StringUtils.defaultIfEmpty(artifactPath, ""));
 
     URIBuilder trackUriBuilder = newURIBuilder(hostCredsProvider.getHostCreds().getHost());
     trackUriBuilder.setPath(base_url);
-    trackUriBuilder.setParameter("path", path);
+    trackUriBuilder.setParameter("path", Paths.get("/").relativize(path).toString());
 
     String jsonOutput = httpCaller.get(trackUriBuilder.toString());
 
@@ -294,16 +294,13 @@ public class NativeArtifactRepository implements ArtifactRepository {
    * Parses a list of JSON FileInfos, as returned by 'mlflow artifacts list'.
    */
   private List<Service.FileInfo> parseFileInfos(String json) {
-    // The protobuf deserializer doesn't allow us to directly deserialize a list, so we
-    // deserialize a list-of-dictionaries, and then reserialize each dictionary to pass it to
-    // the protobuf deserializer.
     Gson gson = new Gson();
     Type type = new TypeToken<Map<String, List<Map<String, Object>>>>() {
     }.getType();
-    Map<String, List<Map<String, Object>>> listOfDicts = gson.fromJson(json, type);
+    Map<String, List<Map<String, Object>>> files = gson.fromJson(json, type);
     List<Service.FileInfo> fileInfos = new ArrayList<>();
 
-    for (Map<String, Object> dict : listOfDicts.get("files")) {
+    for (Map<String, Object> dict : files.get("files")) {
       String fileInfoJson = gson.toJson(dict);
       try {
         Service.FileInfo.Builder builder = Service.FileInfo.newBuilder();
