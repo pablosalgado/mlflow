@@ -1,6 +1,5 @@
 package org.mlflow.artifacts;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -47,47 +46,11 @@ public class NativeArtifactRepositoryTest {
 
   private NativeArtifactRepository newRepo() {
     RunInfo runInfo = client.createRun();
-    logger.info("Created run with id=" + runInfo.getRunUuid() + " and artifactUri=" + runInfo.getArtifactUri());
-    return new NativeArtifactRepository(runInfo.getArtifactUri(), testClientProvider.getClientHostCredsProvider(client));
+    logger.info("Created run with id=" + runInfo.getRunUuid() + " and artifactUri=" +
+      runInfo.getArtifactUri());
+    return new NativeArtifactRepository(runInfo.getArtifactUri(),
+      testClientProvider.getClientHostCredsProvider(client));
   }
-
-//  @Test
-//  public void testListArtifacts() {
-//    RunInfo runInfo = client.getRun("8d40322d85b94d82bbaec5ddf81fdfb3").getInfo();
-//    ArtifactRepository repo = new NativeArtifactRepository(runInfo.getArtifactUri(), runInfo.getRunUuid(), testClientProvider.getClientHostCredsProvider(client));
-//    repo.listArtifacts();
-//  }
-
-//  @Test
-//  public void testDownloadArtifacts() {
-//    RunInfo runInfo = client.getRun("8d40322d85b94d82bbaec5ddf81fdfb3").getInfo();
-//    ArtifactRepository repo = new NativeArtifactRepository(runInfo.getArtifactUri(), runInfo.getRunUuid(), testClientProvider.getClientHostCredsProvider(client));
-//    Path returnFile = repo.downloadArtifacts("NativeArtifactRepositoryTest2334630306556620769.txt").toPath();
-//  }
-//
-//  @Test
-//  public void testLogArtifact() {
-//    ArtifactRepository repo = newRepo();
-//    repo.logArtifact(new File("/home/pablo/.vagrant.d/setup_version"));
-//  }
-//
-//  @Test
-//  public void testLogArtifactWihtArtifactPath() {
-//    ArtifactRepository repo = newRepo();
-//    repo.logArtifact(new File("/home/pablo/.vagrant.d/boxes/ubuntu-VAGRANTSLASH-bionic64/metadata_url"), "boxes/ubuntu-VAGRANTSLASH-bionic64");
-//  }
-
-//  @Test
-//  public void testLogArtifacts() {
-//    ArtifactRepository repo = newRepo();
-//    repo.logArtifacts(new File("/home/pablo/.vagrant.d"));
-//  }
-//
-//  @Test
-//  public void testLogArtifactsWithArtifactPath() {
-//    ArtifactRepository repo = newRepo();
-//    repo.logArtifacts(new File("/home/pablo/.vagrant.d"), "test");
-//  }
 
   @Test
   public void testLogAndDownloadArtifact() throws IOException {

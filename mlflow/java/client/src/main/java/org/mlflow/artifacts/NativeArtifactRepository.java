@@ -78,17 +78,13 @@ public class NativeArtifactRepository implements ArtifactRepository {
       }
     }
 
-    public File download(String uri, String artifactPath) {
+    public void download(String uri, File dstFile) {
       logger.debug("Sending GET " + uri);
       HttpGet request = new HttpGet();
       fillRequestSettings(request, uri);
       try {
         HttpResponse response = executeRequest(request);
-        Path tempDir = Files.createTempDirectory(null);
-        File f = tempDir.resolve(artifactPath).toFile();
-        FileUtils.writeByteArrayToFile(f, EntityUtils.toByteArray(response.getEntity()));
-        logger.debug("Response: " + f);
-        return f;
+        FileUtils.writeByteArrayToFile(dstFile, EntityUtils.toByteArray(response.getEntity()));
       } catch (IOException e) {
         throw new MlflowClientException(e);
       }
@@ -199,30 +195,108 @@ public class NativeArtifactRepository implements ArtifactRepository {
   @Override
   public List<Service.FileInfo> listArtifacts(String artifactPath) {
     URIBuilder artifactUriBuilder = newURIBuilder(this.artifactBaseDir);
-    Path path = Paths.get("", artifactUriBuilder.getPath(), StringUtils.defaultIfEmpty(artifactPath, ""));
+    Path path = Paths.get(
+      "",
+      artifactUriBuilder.getPath(),
+      StringUtils.defaultIfEmpty(artifactPath, "")
+    );
 
     URIBuilder trackUriBuilder = newURIBuilder(hostCredsProvider.getHostCreds().getHost());
     trackUriBuilder.setPath(base_url);
-    trackUriBuilder.setParameter("path", Paths.get("/").relativize(path).toString());
+    trackUriBuilder.setParameter(
+      "path",
+      Paths.get("/").relativize(path).toString()
+    );
 
-    String jsonOutput = httpCaller.get(trackUriBuilder.toString());
+    String json = httpCaller.get(trackUriBuilder.toString());
 
-    return parseFileInfos(jsonOutput);
+    List<Service.FileInfo> fileInfos = new ArrayList<>();
+
+    Gson gson = new Gson();
+    Type type = new TypeToken<Map<String, List<Map<String, Object>>>>() {
+    }.getType();
+
+    Map<String, List<Map<String, Object>>> files = gson.fromJson(json, type);
+
+    if (!files.containsKey("files")) {
+      return fileInfos;
+    }
+
+    for (Map<String, Object> file : files.get("files")) {
+      file.put(
+        "path",
+        artifactPath == null ? file.get("path") : Paths.get("", artifactPath, (String) file.get("path")).toString()
+      );
+      String fileInfoJson = gson.toJson(file);
+      try {
+        Service.FileInfo.Builder builder = Service.FileInfo.newBuilder();
+        JsonFormat.parser().merge(fileInfoJson, builder);
+        fileInfos.add(builder.build());
+      } catch (InvalidProtocolBufferException e) {
+        throw new MlflowClientException("Failed to deserialize JSON into FileInfo: " + json, e);
+      }
+    }
+
+    return fileInfos;
   }
 
   @Override
   public File downloadArtifacts() {
-    return downloadArtifacts(null);
+    Path tempDirectory = createTempDirectory();
+
+    listArtifacts().forEach(fileInfo -> {
+      if (fileInfo.getIsDir()) {
+        downloadArtifactDir(fileInfo.getPath(), tempDirectory);
+      } else {
+        downloadArtifact(fileInfo.getPath(), tempDirectory);
+      }
+    });
+
+    return tempDirectory.toFile();
   }
 
   @Override
   public File downloadArtifacts(String artifactPath) {
+    Path tempDirectory = createTempDirectory();
+
+    List<Service.FileInfo> list = listArtifacts(artifactPath);
+    if (list.isEmpty()) {
+      return downloadArtifact(artifactPath, tempDirectory);
+    }
+
+    list.forEach(fileInfo -> {
+      if (fileInfo.getIsDir()) {
+        downloadArtifactDir(fileInfo.getPath(), tempDirectory);
+      } else {
+        downloadArtifact(fileInfo.getPath(), tempDirectory);
+      }
+    });
+
+    return Paths.get("", tempDirectory.toString(), artifactPath).toFile();
+  }
+
+  private void downloadArtifactDir(String artifactPath, Path dstPath) {
+    listArtifacts(artifactPath).forEach(fileInfo -> {
+      if (fileInfo.getIsDir()) {
+        downloadArtifactDir(
+          Paths.get("", fileInfo.getPath()).toString(),
+          dstPath
+        );
+      } else {
+        downloadArtifact(fileInfo.getPath(), dstPath);
+      }
+    });
+  }
+
+  private File downloadArtifact(String artifactPath, Path dstPath) {
     URIBuilder artifactUriBuilder = newURIBuilder(this.artifactBaseDir);
 
     URIBuilder trackUriBuilder = newURIBuilder(hostCredsProvider.getHostCreds().getHost());
     trackUriBuilder.setPath(base_url + artifactUriBuilder.getPath() + "/" + artifactPath);
 
-    return httpCaller.download(trackUriBuilder.toString(), artifactPath);
+    File file = dstPath.resolve(artifactPath).toFile();
+    httpCaller.download(trackUriBuilder.toString(), file);
+    return file;
   }
 
   @Override
@@ -290,27 +364,11 @@ public class NativeArtifactRepository implements ArtifactRepository {
     }
   }
 
-  /**
-   * Parses a list of JSON FileInfos, as returned by 'mlflow artifacts list'.
-   */
-  private List<Service.FileInfo> parseFileInfos(String json) {
-    Gson gson = new Gson();
-    Type type = new TypeToken<Map<String, List<Map<String, Object>>>>() {
-    }.getType();
-    Map<String, List<Map<String, Object>>> files = gson.fromJson(json, type);
-    List<Service.FileInfo> fileInfos = new ArrayList<>();
-
-    for (Map<String, Object> dict : files.get("files")) {
-      String fileInfoJson = gson.toJson(dict);
-      try {
-        Service.FileInfo.Builder builder = Service.FileInfo.newBuilder();
-        JsonFormat.parser().merge(fileInfoJson, builder);
-        fileInfos.add(builder.build());
-      } catch (InvalidProtocolBufferException e) {
-        throw new MlflowClientException("Failed to deserialize JSON into FileInfo: " + json, e);
-      }
+  private Path createTempDirectory() {
+    try {
+      return Files.createTempDirectory(null);
+    } catch (IOException e) {
+      throw new MlflowClientException(e);
     }
-
-    return fileInfos;
   }
 }
