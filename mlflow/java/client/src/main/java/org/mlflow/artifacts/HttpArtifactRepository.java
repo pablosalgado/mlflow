@@ -42,12 +42,12 @@ import java.util.stream.Stream;
 /**
  * Java Native implementation to artifact repositories. Supersedes {@link CliBasedArtifactRepository}
  */
-public class NativeArtifactRepository implements ArtifactRepository {
+public class HttpArtifactRepository implements ArtifactRepository {
   private class HttpCaller extends MlflowHttpCaller {
     private final Logger logger = LoggerFactory.getLogger(MlflowHttpCaller.class);
 
     HttpCaller() {
-      super(NativeArtifactRepository.this.hostCredsProvider);
+      super(HttpArtifactRepository.this.hostCredsProvider);
     }
 
     private String get(String uri) {
@@ -125,7 +125,7 @@ public class NativeArtifactRepository implements ArtifactRepository {
 
   private final String base_url = "/api/2.0/mlflow-artifacts/artifacts";
 
-  public NativeArtifactRepository(
+  public HttpArtifactRepository(
     String artifactBaseDir,
     MlflowHostCredsProvider hostCredsProvider) {
     this.artifactBaseDir = artifactBaseDir;

@@ -26,9 +26,9 @@ import org.mlflow.tracking.creds.BasicMlflowHostCreds;
 import org.mlflow.tracking.creds.DatabricksMlflowHostCreds;
 import org.mlflow.tracking.creds.MlflowHostCreds;
 
-public class NativeArtifactRepositoryTest {
+public class HttpArtifactRepositoryTest {
   private static final Logger logger = LoggerFactory.getLogger(
-    NativeArtifactRepositoryTest.class);
+    HttpArtifactRepositoryTest.class);
 
   private final TestClientProvider testClientProvider = new TestClientProvider();
 
@@ -44,11 +44,11 @@ public class NativeArtifactRepositoryTest {
     testClientProvider.cleanupClientAndServer();
   }
 
-  private NativeArtifactRepository newRepo() {
+  private HttpArtifactRepository newRepo() {
     RunInfo runInfo = client.createRun();
     logger.info("Created run with id=" + runInfo.getRunUuid() + " and artifactUri=" +
       runInfo.getArtifactUri());
-    return new NativeArtifactRepository(runInfo.getArtifactUri(),
+    return new HttpArtifactRepository(runInfo.getArtifactUri(),
       testClientProvider.getClientHostCredsProvider(client));
   }
 
@@ -138,7 +138,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvBasic() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     MlflowHostCreds hostCreds = new BasicMlflowHostCreds("just-host");
     Map<String, String> env = new HashMap<>();
     repo.setProcessEnvironment(env, hostCreds);
@@ -149,7 +149,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvUserPass() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     MlflowHostCreds hostCreds = new BasicMlflowHostCreds("just-host", "user", "pass");
     Map<String, String> env = new HashMap<>();
     repo.setProcessEnvironment(env, hostCreds);
@@ -162,7 +162,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvToken() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     MlflowHostCreds hostCreds = new BasicMlflowHostCreds("just-host", "token");
     Map<String, String> env = new HashMap<>();
     repo.setProcessEnvironment(env, hostCreds);
@@ -174,7 +174,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvInsecure() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     MlflowHostCreds hostCreds = new BasicMlflowHostCreds("insecure-host", null, null, null,
       true);
     Map<String, String> env = new HashMap<>();
@@ -187,7 +187,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvDatabricksUserPass() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     DatabricksMlflowHostCreds hostCreds = new DatabricksMlflowHostCreds(
       "just-host", "user", "pass");
     Map<String, String> env = new HashMap<>();
@@ -201,7 +201,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvDatabricksToken() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     DatabricksMlflowHostCreds hostCreds = new DatabricksMlflowHostCreds("just-host", "token");
     Map<String, String> env = new HashMap<>();
     repo.setProcessEnvironmentDatabricks(env, hostCreds);
@@ -213,7 +213,7 @@ public class NativeArtifactRepositoryTest {
 
   @Test
   public void testSettingProcessEnvDatabricksInsecure() {
-    NativeArtifactRepository repo = newRepo();
+    HttpArtifactRepository repo = newRepo();
     DatabricksMlflowHostCreds hostCreds = new DatabricksMlflowHostCreds(
       "insecure-host", null, null, null, true);
     Map<String, String> env = new HashMap<>();

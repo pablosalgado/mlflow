@@ -7,7 +7,7 @@ import org.mlflow.artifacts.ArtifactRepositoryFactory;
 import org.mlflow.api.proto.ModelRegistry.*;
 import org.mlflow.api.proto.Service.*;
 import org.mlflow.artifacts.CliBasedArtifactRepository;
-import org.mlflow.artifacts.NativeArtifactRepository;
+import org.mlflow.artifacts.HttpArtifactRepository;
 import org.mlflow.tracking.creds.*;
 
 import java.io.Closeable;
@@ -35,7 +35,7 @@ public class MlflowClient implements Serializable, Closeable {
 
   /**
    * Instantiate a new {@link MlflowClient} based on the MLFLOW_TRACKING_URI environment variable using the new
-   * {@link NativeArtifactRepository} implementation. Should users need the old legacy
+   * {@link HttpArtifactRepository} implementation. Should users need the old legacy
    * implementation please use the {@link #MlflowClient(boolean)} constructor.
    */
   public MlflowClient() {
@@ -44,7 +44,7 @@ public class MlflowClient implements Serializable, Closeable {
 
   /**
    * Instantiate a new {@link MlflowClient} based on the provided tracking uri using the new
-   * {@link NativeArtifactRepository} implementation. Should users need the old legacy
+   * {@link HttpArtifactRepository} implementation. Should users need the old legacy
    * {@link CliBasedArtifactRepository} implementation please use the {@link #MlflowClient(String, boolean)} constructor.
    *
    * @param trackingUri The trackin uri to use.
@@ -54,7 +54,7 @@ public class MlflowClient implements Serializable, Closeable {
   }
 
   /**
-   * Instantiate a new {@link MlflowClient} using the new {@link NativeArtifactRepository}. Users should prefer
+   * Instantiate a new {@link MlflowClient} using the new {@link HttpArtifactRepository}. Users should prefer
    * constructing ApiClients via {@link #MlflowClient()} or {@link #MlflowClient(String)} if possible.
    */
   public MlflowClient(MlflowHostCredsProvider hostCredsProvider) {
@@ -65,7 +65,7 @@ public class MlflowClient implements Serializable, Closeable {
 
   /**
    * Instantiate a new {@link MlflowClient} based on the MLFLOW_TRACKING_URI environment variable and allows to indicate
-   * whether to use the new Java native {@link NativeArtifactRepository } implementation.
+   * whether to use the new Java native {@link HttpArtifactRepository } implementation.
    *
    * @param nativeArtifactRepository <code>true</code> to use the new Java native artifact-repository implementation.
    */
@@ -75,10 +75,10 @@ public class MlflowClient implements Serializable, Closeable {
 
   /**
    * Instantiate a new {@link MlflowClient} using the provided tracking uri and allows to indicate whether to use the new
-   * Java native {@link NativeArtifactRepository } implementation.
+   * Java native {@link HttpArtifactRepository } implementation.
    *
    * @param trackingUri              The tracking uri.
-   * @param nativeArtifactRepository <code>true</code> to use the new Java native {@link NativeArtifactRepository}
+   * @param nativeArtifactRepository <code>true</code> to use the new Java native {@link HttpArtifactRepository}
    *                                 implementation.
    */
   public MlflowClient(String trackingUri, boolean nativeArtifactRepository) {
@@ -947,8 +947,7 @@ public class MlflowClient implements Serializable, Closeable {
     String path = modelName + "/" + version;
     URIBuilder downloadUriBuilder = new URIBuilder()
             .setScheme(DEFAULT_MODELS_ARTIFACT_REPOSITORY_SCHEME).setPath(path);
-    CliBasedArtifactRepository repository = new CliBasedArtifactRepository(null, null,
-            hostCredsProvider);
+    ArtifactRepository repository = getArtifactRepository();
     return repository.downloadArtifactFromUri(downloadUriBuilder.toString());
   }
 
