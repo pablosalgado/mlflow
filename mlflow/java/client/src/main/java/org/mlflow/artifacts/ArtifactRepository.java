@@ -110,13 +110,4 @@ public interface ArtifactRepository {
    *                     start with a /.
    */
   File downloadArtifacts(String artifactPath);
-
-  /**
-   * Downloads an artifact to the local filesystem when provided with an artifact uri. This method should not be used
-   * directly by the user. Please use {@link org.mlflow.tracking.MlflowClient}.
-   *
-   * @param artifactUri Artifact uri
-   * @return Directory/file of the artifact
-   */
-  File downloadArtifactFromUri(String artifactUri);
 }

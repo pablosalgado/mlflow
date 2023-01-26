@@ -4,9 +4,9 @@ import com.google.common.collect.Lists;
 import org.apache.http.client.utils.URIBuilder;
 import org.mlflow.artifacts.ArtifactRepository;
 import org.mlflow.artifacts.ArtifactRepositoryFactory;
+import org.mlflow.artifacts.CliBasedArtifactRepository;
 import org.mlflow.api.proto.ModelRegistry.*;
 import org.mlflow.api.proto.Service.*;
-import org.mlflow.artifacts.CliBasedArtifactRepository;
 import org.mlflow.artifacts.HttpArtifactRepository;
 import org.mlflow.tracking.creds.*;
 
@@ -807,10 +807,6 @@ public class MlflowClient implements Serializable, Closeable {
     return getArtifactRepository(runId).downloadArtifacts(artifactPath);
   }
 
-  private ArtifactRepository getArtifactRepository() {
-    return artifactRepositoryFactory.getArtifactRepository();
-  }
-
   /**
    * @param runId Run ID of an existing MLflow run.
    * @return ArtifactRepository, capable of uploading and downloading MLflow artifacts.
@@ -947,7 +943,8 @@ public class MlflowClient implements Serializable, Closeable {
     String path = modelName + "/" + version;
     URIBuilder downloadUriBuilder = new URIBuilder()
             .setScheme(DEFAULT_MODELS_ARTIFACT_REPOSITORY_SCHEME).setPath(path);
-    ArtifactRepository repository = getArtifactRepository();
+    CliBasedArtifactRepository repository = new CliBasedArtifactRepository(null, null,
+            hostCredsProvider);
     return repository.downloadArtifactFromUri(downloadUriBuilder.toString());
   }
 

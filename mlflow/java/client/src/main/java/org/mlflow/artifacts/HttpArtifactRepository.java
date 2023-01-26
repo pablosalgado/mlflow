@@ -299,11 +299,6 @@ public class HttpArtifactRepository implements ArtifactRepository {
     return file;
   }
 
-  @Override
-  public File downloadArtifactFromUri(String artifactUri) {
-    return null;
-  }
-
   @VisibleForTesting
   void setProcessEnvironment(Map<String, String> environment, MlflowHostCreds hostCreds) {
     environment.put("MLFLOW_TRACKING_URI", hostCreds.getHost());

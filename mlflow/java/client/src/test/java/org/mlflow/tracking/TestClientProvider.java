@@ -51,6 +51,10 @@ public class TestClientProvider {
     }
   }
 
+  public MlflowClient initializeClientAndServer(String defaultArtifactRoot) throws IOException {
+    return this.initializeClientAndServer();
+  }
+
   public MlflowClient initializeClientAndSqlLiteBasedServer() throws IOException {
     if (serverProcess != null) {
       throw new IllegalStateException("Previous server process not cleaned up");
@@ -192,4 +196,5 @@ public class TestClientProvider {
     }
     return true;
   }
+
 }
